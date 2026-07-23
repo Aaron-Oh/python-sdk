@@ -1,9 +1,11 @@
 # resources
 
-Expose data by URI: a static resource (`config://app`) and an RFC-6570
-template (`greeting://{name}`). One `@mcp.resource()` decorator handles both —
-the SDK infers static-vs-template from whether the URI contains `{...}`. The
-client lists resources, lists templates, then reads each.
+Expose data by URI: a static resource (`config://app`), an RFC-6570 template
+(`greeting://{name}`), and a binary resource (`cover://placeholder`). One
+`@mcp.resource()` decorator handles all three — the SDK infers
+static-vs-template from whether the URI contains `{...}`, and text-vs-binary
+from whether the function returns `str` or `bytes`. The client lists resources,
+lists templates, then reads each.
 
 ## Run it
 
@@ -27,12 +29,18 @@ uv run python -m stories.resources.client --http --server server_lowlevel
   static resource (appears in `resources/list`); a URI with `{name}` registers
   a template (appears only in `resources/templates/list`) and the placeholder
   must match the function parameter name.
+- `server.py` `placeholder_cover` — returning `bytes` (not `str`) makes
+  `MCPServer` emit a `BlobResourceContents` whose `.blob` is the base64 of those
+  bytes; `mime_type=` labels the payload. The lowlevel server supplies the same
+  base64 string by hand.
 - `server_lowlevel.py` `read_resource` — without `MCPServer` you own the URI
   dispatch yourself, including raising `MCPError(code=INVALID_PARAMS, ...)` for
   unknown URIs (matches what `MCPServer` sends).
-- `client.py` `isinstance(entry, TextResourceContents)` — `contents` is a list
-  of `TextResourceContents | BlobResourceContents`; narrow before reading
-  `.text`.
+- `client.py` `isinstance(entry, TextResourceContents)` vs
+  `BlobResourceContents` — `contents` is a list of
+  `TextResourceContents | BlobResourceContents`; the text URIs yield the former
+  (read `.text`), `cover://placeholder` yields the latter (base64-decode
+  `.blob`). Narrow on the type before touching either field.
 
 ## Not shown here
 
